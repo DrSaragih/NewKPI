@@ -301,15 +301,43 @@ def calculate_final_score(responses, bobot_poin):
             subtopik_score /= total_questions
             kategori_score += subtopik_score
         kategori_score /= len(subtopiks)
-        category_scores[kategori] = kategori_score * bobot_poin[kategori] / 100
+        category_scores[kategori] = kategori_score * bobot_poin[kategori.split(' ')[0]] / 100
         final_score += category_scores[kategori]
     return final_score, category_scores
 
+# Simpan jawaban di session state agar tetap ada saat berpindah halaman
+if 'responses' not in st.session_state:
+    st.session_state.responses = {}
+if 'completed_topics' not in st.session_state:
+    st.session_state.completed_topics = set()
+if 'show_results' not in st.session_state:
+    st.session_state.show_results = False
+if 'personal_info' not in st.session_state:
+    st.session_state.personal_info = {}
+
+# Ikon untuk navigasi sidebar
+menu_icons = {
+    "Data Diri": "👤",
+    "Isi Penilaian": "📝",
+    "Hasil Akhir": "📊"
+}
+
 # Sidebar untuk navigasi
 st.sidebar.title("Navigasi")
-selected_page = st.sidebar.radio("Pilih Halaman", ["Isi Penilaian", "Hasil Akhir"])
+selected_page = st.sidebar.radio("Pilih Halaman", ["Data Diri", "Isi Penilaian", "Hasil Akhir"], format_func=lambda page: f"{menu_icons[page]} {page}")
 
-if selected_page == "Isi Penilaian":
+# Halaman Data Diri
+if selected_page == "Data Diri":
+    st.header("Data Diri")
+    st.session_state.personal_info['Nama'] = st.text_input("Nama", value=st.session_state.personal_info.get('Nama', ''))
+    st.session_state.personal_info['Nomor Induk Pegawai'] = st.text_input("Nomor Induk Pegawai", value=st.session_state.personal_info.get('Nomor Induk Pegawai', ''))
+    st.session_state.personal_info['Direktorat'] = st.text_input("Direktorat", value=st.session_state.personal_info.get('Direktorat', ''))
+    st.session_state.personal_info['Jabatan'] = st.text_input("Jabatan", value=st.session_state.personal_info.get('Jabatan', ''))
+    if st.button("Simpan Data Diri"):
+        st.success("Data diri telah disimpan!")
+
+# Halaman Isi Penilaian
+elif selected_page == "Isi Penilaian":
     selected_kategori = st.sidebar.selectbox("Pilih Kategori", list(kriteria.keys()))
     selected_subtopik = st.sidebar.selectbox("Pilih Subtopik", list(kriteria[selected_kategori].keys()))
 
@@ -349,16 +377,14 @@ if selected_page == "Isi Penilaian":
 
     # Tombol submit dan penandaan topik yang selesai
     if st.button("Submit"):
-        if (selected_kategori, selected_subtopik) not in st.session_state.completed_topics:
-            st.session_state.completed_topics.append((selected_kategori, selected_subtopik))
+        st.session_state.completed_topics.add((selected_kategori, selected_subtopik))
         st.success(f"Topik {selected_subtopik} pada kategori {selected_kategori} telah disubmit!")
-        #st.write("Hasil Penilaian:")
-        #st.json(responses)
 
     # Check if all topics are completed to show final results
     if len(st.session_state.completed_topics) == sum(len(topiks) for topiks in kriteria.values()):
         st.session_state.show_results = True
 
+# Halaman Hasil Akhir
 elif selected_page == "Hasil Akhir" and st.session_state.show_results:
     st.header("Hasil Akhir")
     final_score, category_scores = calculate_final_score(st.session_state.responses, bobot_poin)
